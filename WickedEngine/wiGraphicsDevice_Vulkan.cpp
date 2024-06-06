@@ -7290,8 +7290,13 @@ using namespace vulkan_internal;
 				if (frame_fence[bufferindex][queue] == VK_NULL_HANDLE)
 					continue;
 
-				res = vkWaitForFences(device, 1, &frame_fence[bufferindex][queue], VK_TRUE, 0xFFFFFFFFFFFFFFFF);
-				assert(res == VK_SUCCESS);
+        while (true) {
+          res = vkWaitForFences(device, 1, &frame_fence[bufferindex][queue],
+                                VK_TRUE, uint64_t{10000000000});
+          if (res == VK_SUCCESS) break;
+          std::cerr << "frame_fence[" << bufferindex << "][" << queue << "]\n"; 
+          assert(res == VK_SUCCESS);
+        }
 
 				res = vkResetFences(device, 1, &frame_fence[bufferindex][queue]);
 				assert(res == VK_SUCCESS);

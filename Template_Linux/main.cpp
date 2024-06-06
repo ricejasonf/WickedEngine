@@ -1,4 +1,5 @@
-#include "stdafx.h"
+#include "MyRenderPath.h"
+#include <WickedEngine.h>
 #include <SDL2/SDL.h>
 
 int sdl_loop(wi::Application &application)
@@ -15,6 +16,10 @@ int sdl_loop(wi::Application &application)
         {
             switch (event.type) 
             {
+                case SDL_KEYDOWN:
+                    if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
+                      quit = true;
+                    break;
                 case SDL_QUIT:      
                     quit = true;
                     break;
@@ -56,12 +61,19 @@ int main(int argc, char *argv[])
     sdl2::window_ptr_t window = sdl2::make_window(
             "Template",
             SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            2560, 1440,
+            1920, 1080,
             SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_ALLOW_HIGHDPI);
 
     SDL_Event event;
 
+    if (!window) {
+      std::exit(1);
+    }
+
+    SDL_SetWindowFullscreen(window.get(), SDL_WINDOW_FULLSCREEN_DESKTOP);
     application.SetWindow(window.get());
+    my::RenderPath RenderPath;
+    application.ActivatePath(&RenderPath);
 
     int ret = sdl_loop(application);
 

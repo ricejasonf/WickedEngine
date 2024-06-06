@@ -13,7 +13,7 @@ endif()
 
 set(SOURCE_FILES
     main.cpp
-    stdafx.h
+    MyRenderPath.cpp
 )
 
 set(LIB_DXCOMPILER "libdxcompiler.so")
