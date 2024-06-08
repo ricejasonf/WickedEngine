@@ -1,15 +1,129 @@
 #include "MyRenderPath.h"
-#include <iostream>
+#include "wiScene.h"
+
+namespace {
+
+class PuzzleCube {
+  using Entity = wi::ecs::Entity;
+  using Scene = wi::scene::Scene;
+
+  static constexpr float scale_out = 2.1f;
+  static constexpr float sticker_thickness = 0.025f;
+
+public:
+  Entity entity;  // The root object thing.
+private:
+  std::array<Entity, 27> pieces;
+
+  // Each sticker color represents a face
+  // of the cube that we can project stuff to.
+  // Orient opposite faces as upside down to
+  // each other (except Green and Blue).
+  std::array<Entity, 9> stickers_green;
+  std::array<Entity, 9> stickers_blue;
+  std::array<Entity, 9> stickers_red;
+  std::array<Entity, 9> stickers_orange;
+  std::array<Entity, 9> stickers_white;
+  std::array<Entity, 9> stickers_yellow;
+
+  Entity addSticker(Scene& scene, Entity piece,
+                    XMFLOAT3 const& scale,
+                    XMFLOAT3 const& translate) {
+      Entity sticker = scene.Entity_CreateCube(std::string{});
+      scene.Component_Attach(sticker, piece);
+      if (wi::scene::TransformComponent* transform
+            = scene.transforms.GetComponent(sticker)) {
+        transform->Scale(scale);
+        transform->Translate(translate);
+      }
+      return sticker;
+  }
+  void addStickers(Scene& scene, Entity piece,
+                   unsigned x, unsigned y, unsigned z) {
+    Entity sticker = scene.Entity_CreateCube(std::string{});
+    x %= 3;
+    y %= 3;
+    z %= 3;
+
+    if (x == 0) // Green
+      stickers_green[z * 3 + y] = addSticker(scene, piece,
+        XMFLOAT3{sticker_thickness, 0.9f, 0.9f},
+        XMFLOAT3{-1.0f - sticker_thickness, 0.0f, 0.0f});
+    else if (x == 2) // Blue
+      stickers_green[z * 3 + y] = addSticker(scene, piece,
+        XMFLOAT3{sticker_thickness, 0.9f, 0.9f},
+        XMFLOAT3{1.0f + sticker_thickness, 0.0f, 0.0f});
+    if (y == 0) // Red
+      stickers_green[x * 3 + z] = addSticker(scene, piece,
+        XMFLOAT3{sticker_thickness, 0.9f, 0.9f},
+        XMFLOAT3{1.0f + sticker_thickness, 0.0f, 0.0f});
+    else if (y == 2) // Orange
+      stickers_green[8 - (x * 3 + z)] = addSticker(scene, piece,
+        XMFLOAT3{0.9f, sticker_thickness, 0.9f},
+        XMFLOAT3{0.0f, 1.0f + sticker_thickness, 0.0f});
+    if (z == 0) // Yellow
+      stickers_green[x * 3 + y] = addSticker(scene, piece,
+        XMFLOAT3{0.9f, sticker_thickness, 0.9f},
+        XMFLOAT3{0.0f, 1.0f + sticker_thickness, 0.0f});
+    else if (z == 2) // White
+      stickers_green[8 - (x * 3 + y)] = addSticker(scene, piece,
+        XMFLOAT3{0.9f, 0.9f, sticker_thickness},
+        XMFLOAT3{0.0f, 0.0f, 1.0f + sticker_thickness});
+  }
+
+  Entity createPiece(wi::scene::Scene& scene, unsigned x, unsigned y, unsigned z) {
+    Entity piece = scene.Entity_CreateCube(std::string{});
+    scene.Component_Attach(piece, entity);
+    if (wi::scene::TransformComponent* transform
+          = scene.transforms.GetComponent(piece)) {
+      transform->Translate(XMFLOAT3{scale_out * (float(x % 3) - 1.0f),
+                                    scale_out * (float(y % 3) - 1.0f),
+                                    scale_out * (float(z % 3) - 1.0f)});
+    }
+    return piece;
+  }
+
+  void createPieces(wi::scene::Scene& scene) {
+    // Start at the left, top, back corner.
+    unsigned x = 0;
+    unsigned y = 0;
+    unsigned z = 0;
+    for (auto& piece : pieces) {
+      if (!(x % 3 == 1 && y % 3 == 1 && z % 3 == 1)) {
+        piece = createPiece(scene, x, y, z);
+        addStickers(scene, piece, x, y, z);
+      }
+
+      x += 1;
+      if (x % 3 == 0)
+        y += 1;
+      if (x % 9 == 0)
+        z += 1;
+    }
+  }
+
+public:
+
+  PuzzleCube(wi::scene::Scene& scene) {
+    entity = wi::ecs::CreateEntity();
+    wi::scene::TransformComponent& transform = scene.transforms.Create(entity);
+    createPieces(scene);
+  }
+
+};
+
+}
 
 namespace my {
 
 void RenderPath::Start() {
-  box = scene->Entity_CreateCube("box");
+  PuzzleCube cube(*scene);
+  box = cube.entity;
 
   // Get outside of the box!
   if (wi::scene::TransformComponent* transform
         = scene->transforms.GetComponent(box)) {
-    transform->Translate(XMFLOAT3{0.0f, 0.0f, 5.0f});
+    transform->Translate(XMFLOAT3{0.0f, 0.0f, 15.0f});
   }
 }
 

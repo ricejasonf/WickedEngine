@@ -1,7 +1,10 @@
 #pragma once
 
 #include <wiRenderPath3D.h>
-#include <wiScene.h>
+
+namespace wi::ecs {
+  using Entity = uint32_t;
+}
 
 namespace my {
 
