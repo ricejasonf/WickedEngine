@@ -10,6 +10,8 @@ class PuzzleCube {
   static constexpr float scale_out = 2.1f;
   static constexpr float sticker_thickness = 0.025f;
 
+  Scene& scene;
+
 public:
   Entity entity;  // The root object thing.
 private:
@@ -50,23 +52,23 @@ private:
         XMFLOAT3{sticker_thickness, 0.9f, 0.9f},
         XMFLOAT3{-1.0f - sticker_thickness, 0.0f, 0.0f});
     else if (x == 2) // Blue
-      stickers_green[z * 3 + y] = addSticker(scene, piece,
+      stickers_blue[z * 3 + y] = addSticker(scene, piece,
         XMFLOAT3{sticker_thickness, 0.9f, 0.9f},
         XMFLOAT3{1.0f + sticker_thickness, 0.0f, 0.0f});
     if (y == 0) // Red
-      stickers_green[x * 3 + z] = addSticker(scene, piece,
-        XMFLOAT3{sticker_thickness, 0.9f, 0.9f},
-        XMFLOAT3{1.0f + sticker_thickness, 0.0f, 0.0f});
+      stickers_red[x * 3 + z] = addSticker(scene, piece,
+        XMFLOAT3{0.9f, sticker_thickness, 0.9f},
+        XMFLOAT3{0.0f, -1.0f - sticker_thickness, 0.0f});
     else if (y == 2) // Orange
-      stickers_green[8 - (x * 3 + z)] = addSticker(scene, piece,
+      stickers_orange[8 - (x * 3 + z)] = addSticker(scene, piece,
         XMFLOAT3{0.9f, sticker_thickness, 0.9f},
         XMFLOAT3{0.0f, 1.0f + sticker_thickness, 0.0f});
     if (z == 0) // Yellow
-      stickers_green[x * 3 + y] = addSticker(scene, piece,
-        XMFLOAT3{0.9f, sticker_thickness, 0.9f},
-        XMFLOAT3{0.0f, 1.0f + sticker_thickness, 0.0f});
+      stickers_yellow[x * 3 + y] = addSticker(scene, piece,
+        XMFLOAT3{0.9f, 0.9f, sticker_thickness},
+        XMFLOAT3{0.0f, 0.0f, -1.0f - sticker_thickness});
     else if (z == 2) // White
-      stickers_green[8 - (x * 3 + y)] = addSticker(scene, piece,
+      stickers_white[8 - (x * 3 + y)] = addSticker(scene, piece,
         XMFLOAT3{0.9f, 0.9f, sticker_thickness},
         XMFLOAT3{0.0f, 0.0f, 1.0f + sticker_thickness});
   }
@@ -79,6 +81,10 @@ private:
       transform->Translate(XMFLOAT3{scale_out * (float(x % 3) - 1.0f),
                                     scale_out * (float(y % 3) - 1.0f),
                                     scale_out * (float(z % 3) - 1.0f)});
+    }
+    if (wi::scene::MaterialComponent* material
+          = scene.materials.GetComponent(piece)) {
+      material->SetBaseColor(XMFLOAT4{0.0f, 0.0f, 0.0f, 0.0f});
     }
     return piece;
   }
@@ -100,11 +106,31 @@ private:
       if (x % 9 == 0)
         z += 1;
     }
+
+    applyStickerColor(stickers_green,  0.0f, 1.0f, 0.0f);
+    applyStickerColor(stickers_blue,   0.0f, 0.0f, 1.0f);
+    applyStickerColor(stickers_red  ,  1.0f, 0.0f, 0.0f);
+    applyStickerColor(stickers_orange, 1.0f, 0.50f, 0.0f);
+    applyStickerColor(stickers_white,  1.0f, 1.0f, 1.0f);
+    applyStickerColor(stickers_yellow, 1.0f, 1.0f, 0.0f);
+  }
+
+  void applyStickerColor(std::array<Entity, 9> stickers,
+                            float red, float green, float blue) {
+    for (Entity sticker : stickers) {
+      if (wi::scene::MaterialComponent* material
+            = scene.materials.GetComponent(sticker)) {
+        material->SetBaseColor(XMFLOAT4{red, green, blue, 0.0f});
+        material->SetClearcoatFactor(1.0f);
+      }
+    }
   }
 
 public:
 
-  PuzzleCube(wi::scene::Scene& scene) {
+  PuzzleCube(wi::scene::Scene& scene_)
+    : scene(scene_)
+  {
     entity = wi::ecs::CreateEntity();
     wi::scene::TransformComponent& transform = scene.transforms.Create(entity);
     createPieces(scene);
@@ -125,13 +151,20 @@ void RenderPath::Start() {
         = scene->transforms.GetComponent(box)) {
     transform->Translate(XMFLOAT3{0.0f, 0.0f, 15.0f});
   }
+
+  // Make an interesting light.
+  scene->Entity_CreateLight(std::string{},
+    XMFLOAT3{15.0f, 5.0f, 0.0f}, // pos
+    XMFLOAT3{1.0f, 1.0f, 1.0f}, // color
+    1000.0f, // intensity
+    100.0f); // range
 }
 
 void RenderPath::Update(float dt) {
   // Rotate the box!
   if (wi::scene::TransformComponent* transform
         = scene->transforms.GetComponent(box)) {
-    transform->RotateRollPitchYaw(XMFLOAT3{1.0f * dt, 0.0f, 0.0f});
+    transform->RotateRollPitchYaw(XMFLOAT3{1.0f * dt, 0.1f * dt, 0.0f});
   }
   RenderPath3D::Update(dt);
 }
