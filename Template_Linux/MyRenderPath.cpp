@@ -1,4 +1,6 @@
 #include "MyRenderPath.h"
+#include "wiGraphics.h"
+#include "wiInitializer.h"
 #include "wiScene.h"
 
 namespace {
@@ -14,6 +16,7 @@ class PuzzleCube {
 
 public:
   Entity entity;  // The root object thing.
+  int my_shader_index;
 private:
   std::array<Entity, 27> pieces;
 
@@ -85,6 +88,7 @@ private:
     if (wi::scene::MaterialComponent* material
           = scene.materials.GetComponent(piece)) {
       material->SetBaseColor(XMFLOAT4{0.0f, 0.0f, 0.0f, 0.0f});
+      material->SetCustomShaderID(my_shader_index);
     }
     return piece;
   }
@@ -122,17 +126,21 @@ private:
             = scene.materials.GetComponent(sticker)) {
         material->SetBaseColor(XMFLOAT4{red, green, blue, 0.0f});
         material->SetClearcoatFactor(1.0f);
+        material->SetCustomShaderID(my_shader_index);
       }
     }
   }
 
 public:
 
-  PuzzleCube(wi::scene::Scene& scene_)
-    : scene(scene_)
+  PuzzleCube(wi::scene::Scene& scene_, int shader)
+    : scene(scene_),
+      my_shader_index(shader)
   {
     entity = wi::ecs::CreateEntity();
     wi::scene::TransformComponent& transform = scene.transforms.Create(entity);
+    wi::scene::NameComponent& name = scene.names.Create(entity);
+    name.name = "cube";
     createPieces(scene);
   }
 
@@ -142,8 +150,43 @@ public:
 
 namespace my {
 
+void Application::Run() {
+  // The event handler being set also indicates
+  // that we loaded the stuff;
+  if (!load_shaders_event_handler.IsValid() &&
+      IsInitializeFinished(wi::initializer::INITIALIZED_SYSTEM_RENDERER)) {
+    LoadShaders();
+    ActivatePath(&render_path);
+    load_shaders_event_handler = wi::eventhandler::Subscribe(
+      wi::eventhandler::EVENT_RELOAD_SHADERS,
+      [this](auto) { this->LoadShaders(); });
+  }
+
+  wi::Application::Run();
+}
+
+// Load/Reload our custom shaders.
+// Call this after reloading the builtin shaders.
+void Application::LoadShaders() {
+  wi::graphics::PipelineStateDesc desc;
+  desc.vs = wi::renderer::GetShader(wi::enums::VSTYPE_OBJECT_COMMON);
+  assert(desc.vs);
+  assert(desc.vs->internal_state.get());
+  desc.ps = wi::renderer::GetShader(wi::enums::PSTYPE_OBJECT_HOLOGRAM);
+  desc.bs = wi::renderer::GetBlendState(wi::enums::BSTYPE_ADDITIVE);
+  desc.rs = wi::renderer::GetRasterizerState(wi::enums::RSTYPE_FRONT);
+  desc.pt = wi::graphics::PrimitiveTopology::TRIANGLELIST;
+  wi::graphics::PipelineState pso;
+  wi::graphics::GetDevice()->CreatePipelineState(&desc, &pso);
+  wi::renderer::CustomShader shader;
+  shader.name = "hologramz";
+  shader.filterMask = wi::enums::FILTER_TRANSPARENT;
+  shader.pso[wi::enums::RENDERPASS_MAIN] = pso;
+  render_path.my_shader_index = wi::renderer::RegisterCustomShader(shader);
+}
+
 void RenderPath::Start() {
-  PuzzleCube cube(*scene);
+  PuzzleCube cube(*scene, my_shader_index);
   box = cube.entity;
 
   // Get outside of the box!
