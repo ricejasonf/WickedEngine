@@ -1,7 +1,9 @@
 #include "MyRenderPath.h"
+#include "wiBacklog.h"
 #include "wiGraphics.h"
 #include "wiInitializer.h"
 #include "wiScene.h"
+#include "wiShaderCompiler.h"
 
 namespace {
 
@@ -16,7 +18,7 @@ class PuzzleCube {
 
 public:
   Entity entity;  // The root object thing.
-  int my_shader_index;
+  int my_shader_index = -1;
 private:
   std::array<Entity, 27> pieces;
 
@@ -156,44 +158,88 @@ void Application::Run() {
   if (!load_shaders_event_handler.IsValid() &&
       IsInitializeFinished(wi::initializer::INITIALIZED_SYSTEM_RENDERER)) {
     LoadShaders();
+    render_path.Load();
     ActivatePath(&render_path);
     load_shaders_event_handler = wi::eventhandler::Subscribe(
       wi::eventhandler::EVENT_RELOAD_SHADERS,
-      [this](auto) { this->LoadShaders(); });
+      [this](auto) { 
+          this->LoadShaders();
+          this->render_path.SetBoxShader();
+        });
   }
 
   wi::Application::Run();
 }
 
 // Load/Reload our custom shaders.
-// Call this after reloading the builtin shaders.
 void Application::LoadShaders() {
+  wi::graphics::ShaderStage stage = wi::graphics::ShaderStage::PS;
   wi::graphics::PipelineStateDesc desc;
   desc.vs = wi::renderer::GetShader(wi::enums::VSTYPE_OBJECT_COMMON);
   assert(desc.vs);
   assert(desc.vs->internal_state.get());
-  desc.ps = wi::renderer::GetShader(wi::enums::PSTYPE_OBJECT_HOLOGRAM);
+  wi::graphics::GraphicsDevice& device = *wi::graphics::GetDevice();
+
+  // Compile the shader.
+  wi::shadercompiler::CompilerInput input;
+  wi::shadercompiler::CompilerOutput output;
+  input.format = device.GetShaderFormat();
+  input.stage = stage;
+  input.shadersourcefilename = "../../Template_Linux/my_shader.hlsl";
+  input.include_directories.push_back("../WickedEngine/shaders/");
+
+  wi::shadercompiler::Compile(input, output);
+  if (!output.IsValid()) {
+    wi::backlog::post(output.error_message, wi::backlog::LogLevel::Warning);
+    return;
+  }
+  if (!device.CreateShader(stage, output.shaderdata, output.shadersize, &my_shader)) {
+    wi::backlog::post("unable to create shader", wi::backlog::LogLevel::Warning);
+    return;
+  }
+
+  desc.ps = &my_shader;
   desc.bs = wi::renderer::GetBlendState(wi::enums::BSTYPE_ADDITIVE);
   desc.rs = wi::renderer::GetRasterizerState(wi::enums::RSTYPE_FRONT);
   desc.pt = wi::graphics::PrimitiveTopology::TRIANGLELIST;
+
+
   wi::graphics::PipelineState pso;
   wi::graphics::GetDevice()->CreatePipelineState(&desc, &pso);
   wi::renderer::CustomShader shader;
-  shader.name = "hologramz";
+  shader.name = std::string("my_shader");
   shader.filterMask = wi::enums::FILTER_TRANSPARENT;
   shader.pso[wi::enums::RENDERPASS_MAIN] = pso;
   render_path.my_shader_index = wi::renderer::RegisterCustomShader(shader);
+  wi::backlog::post(std::string("manually compiled/registered shader: ") +
+                    std::string(input.shadersourcefilename));
 }
 
-void RenderPath::Start() {
-  PuzzleCube cube(*scene, my_shader_index);
+void RenderPath::SetBoxShader() {
+  if (wi::scene::MaterialComponent* material
+        = scene->materials.GetComponent(box)) {
+    material->SetCustomShaderID(my_shader_index);
+    wi::backlog::post("shader id updated: " + std::to_string(my_shader_index));
+    
+  } else {
+    wi::backlog::post("unable to update shader id",
+        wi::backlog::LogLevel::Warning);
+  }
+}
+
+void RenderPath::Load() {
+#if 0
+  PuzzleCube cube(*scene, /*shader_index=*/-1);
   box = cube.entity;
+#endif
+  box = scene->Entity_CreateCube(std::string{});
 
   // Get outside of the box!
   if (wi::scene::TransformComponent* transform
         = scene->transforms.GetComponent(box)) {
-    transform->Translate(XMFLOAT3{0.0f, 0.0f, 15.0f});
+    transform->Translate(XMFLOAT3{0.0f, 0.0f, 5.0f});
   }
+  SetBoxShader();
 
   // Make an interesting light.
   scene->Entity_CreateLight(std::string{},
@@ -209,6 +255,7 @@ void RenderPath::Update(float dt) {
         = scene->transforms.GetComponent(box)) {
     transform->RotateRollPitchYaw(XMFLOAT3{1.0f * dt, 0.1f * dt, 0.0f});
   }
+
   RenderPath3D::Update(dt);
 }
 

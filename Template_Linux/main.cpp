@@ -3,14 +3,15 @@
 #include <SDL2/SDL.h>
 #include <string>
 
-void hot_reload_script() {
+void hot_reload_script(my::Application& app) {
+  wi::eventhandler::FireEvent(wi::eventhandler::EVENT_RELOAD_SHADERS, 0);
   static std::string file_path = wi::helper::GetCurrentPath() +
                                   "/startup.lua";
   if (wi::lua::RunFile(file_path))
     wi::backlog::post("Hot reloaded startup file: " + file_path);
 }
 
-int sdl_loop(my::Application &application) {
+int sdl_loop(my::Application& application) {
   SDL_Event event;
   bool ctrl_left = false;
   bool ctrl_right = false;
@@ -29,7 +30,7 @@ int sdl_loop(my::Application &application) {
           quit = true;
         else if (event.key.keysym.sym == SDLK_SPACE &&
                  (ctrl_left || ctrl_right))
-          hot_reload_script();
+          hot_reload_script(application);
         else if (event.key.keysym.sym == SDLK_LCTRL)
           ctrl_left = true;
         else if (event.key.keysym.sym == SDLK_RCTRL)
@@ -68,9 +69,6 @@ int sdl_loop(my::Application &application) {
 
 int main(int argc, char *argv[]) {
     my::Application application;
-    #ifdef WickedEngine_SHADER_DIR
-    wi::renderer::SetShaderSourcePath(WickedEngine_SHADER_DIR);
-    #endif
 
     application.infoDisplay.active = true;
     application.infoDisplay.watermark = true;
