@@ -1,7 +1,12 @@
 #include "MyRenderPath.h"
 #include <WickedEngine.h>
 #include <SDL2/SDL.h>
+#include <initializer_list>
 #include <string>
+#include <thread>
+
+void watch_shaders_finish();
+void watch_shaders_start(std::vector<char const*> files);
 
 void hot_reload_script(my::Application& app) {
   wi::eventhandler::FireEvent(wi::eventhandler::EVENT_RELOAD_SHADERS, 0);
@@ -94,7 +99,9 @@ int main(int argc, char *argv[]) {
     // SDL_SetWindowFullscreen(window.get(), SDL_WINDOW_FULLSCREEN_DESKTOP);
     application.SetWindow(window.get());
 
+    watch_shaders_start({"../../Template_Linux/my_shader.hlsl"});
     int ret = sdl_loop(application);
+    watch_shaders_finish();
 
     SDL_Quit();
 

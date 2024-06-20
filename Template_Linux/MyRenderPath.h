@@ -22,7 +22,7 @@ public:
 class Application : public wi::Application {
   RenderPath render_path;
   wi::eventhandler::Handle load_shaders_event_handler;
-  wi::graphics::Shader my_shader;
+  std::unique_ptr<wi::graphics::Shader> my_shader;
   void LoadShaders();
 public:
   void Run();

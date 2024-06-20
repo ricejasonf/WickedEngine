@@ -164,7 +164,6 @@ void Application::Run() {
       wi::eventhandler::EVENT_RELOAD_SHADERS,
       [this](auto) { 
           this->LoadShaders();
-          this->render_path.SetBoxShader();
         });
   }
 
@@ -179,7 +178,7 @@ void Application::LoadShaders() {
   assert(desc.vs);
   assert(desc.vs->internal_state.get());
   wi::graphics::GraphicsDevice& device = *wi::graphics::GetDevice();
-
+  my_shader = std::make_unique<wi::graphics::Shader>();
   // Compile the shader.
   wi::shadercompiler::CompilerInput input;
   wi::shadercompiler::CompilerOutput output;
@@ -190,15 +189,20 @@ void Application::LoadShaders() {
 
   wi::shadercompiler::Compile(input, output);
   if (!output.IsValid()) {
-    wi::backlog::post(output.error_message, wi::backlog::LogLevel::Warning);
+    wi::backlog::post(std::string("SHADER COMPILE FAILED: ") + output.error_message,
+      wi::backlog::LogLevel::Warning);
     return;
   }
-  if (!device.CreateShader(stage, output.shaderdata, output.shadersize, &my_shader)) {
-    wi::backlog::post("unable to create shader", wi::backlog::LogLevel::Warning);
+  if (!device.CreateShader(stage, output.shaderdata, output.shadersize,
+                           my_shader.get())) {
+    wi::backlog::post("unable to create shader",
+      wi::backlog::LogLevel::Warning);
     return;
   }
+  // ... or we could use this instead of Compile/CreateShader
+  //wi::renderer::LoadShader(stage, *my_shader, "my_shader.cso");
 
-  desc.ps = &my_shader;
+  desc.ps = my_shader.get();
   desc.bs = wi::renderer::GetBlendState(wi::enums::BSTYPE_ADDITIVE);
   desc.rs = wi::renderer::GetRasterizerState(wi::enums::RSTYPE_FRONT);
   desc.pt = wi::graphics::PrimitiveTopology::TRIANGLELIST;
@@ -219,8 +223,6 @@ void RenderPath::SetBoxShader() {
   if (wi::scene::MaterialComponent* material
         = scene->materials.GetComponent(box)) {
     material->SetCustomShaderID(my_shader_index);
-    wi::backlog::post("shader id updated: " + std::to_string(my_shader_index));
-    
   } else {
     wi::backlog::post("unable to update shader id",
         wi::backlog::LogLevel::Warning);

@@ -14,6 +14,7 @@ endif()
 set(SOURCE_FILES
     main.cpp
     MyRenderPath.cpp
+    WatchShaders.cpp
 )
 
 set(LIB_DXCOMPILER "libdxcompiler.so")
