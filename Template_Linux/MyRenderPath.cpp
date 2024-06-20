@@ -1,6 +1,7 @@
 #include "MyRenderPath.h"
 #include "wiBacklog.h"
 #include "wiGraphics.h"
+#include "wiRenderer.h"
 #include "wiInitializer.h"
 #include "wiScene.h"
 #include "wiShaderCompiler.h"
@@ -178,7 +179,7 @@ void Application::LoadShaders() {
   assert(desc.vs);
   assert(desc.vs->internal_state.get());
   wi::graphics::GraphicsDevice& device = *wi::graphics::GetDevice();
-  my_shader = std::make_unique<wi::graphics::Shader>();
+
   // Compile the shader.
   wi::shadercompiler::CompilerInput input;
   wi::shadercompiler::CompilerOutput output;
@@ -194,7 +195,7 @@ void Application::LoadShaders() {
     return;
   }
   if (!device.CreateShader(stage, output.shaderdata, output.shadersize,
-                           my_shader.get())) {
+                           &my_shader)) {
     wi::backlog::post("unable to create shader",
       wi::backlog::LogLevel::Warning);
     return;
@@ -202,7 +203,7 @@ void Application::LoadShaders() {
   // ... or we could use this instead of Compile/CreateShader
   //wi::renderer::LoadShader(stage, *my_shader, "my_shader.cso");
 
-  desc.ps = my_shader.get();
+  desc.ps = &my_shader;
   desc.bs = wi::renderer::GetBlendState(wi::enums::BSTYPE_ADDITIVE);
   desc.rs = wi::renderer::GetRasterizerState(wi::enums::RSTYPE_FRONT);
   desc.pt = wi::graphics::PrimitiveTopology::TRIANGLELIST;

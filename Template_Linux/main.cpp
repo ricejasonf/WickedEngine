@@ -9,7 +9,7 @@ void watch_shaders_finish();
 void watch_shaders_start(std::vector<char const*> files);
 
 void hot_reload_script(my::Application& app) {
-  wi::eventhandler::FireEvent(wi::eventhandler::EVENT_RELOAD_SHADERS, 0);
+  wi::renderer::ReloadShaders();
   static std::string file_path = wi::helper::GetCurrentPath() +
                                   "/startup.lua";
   if (wi::lua::RunFile(file_path))

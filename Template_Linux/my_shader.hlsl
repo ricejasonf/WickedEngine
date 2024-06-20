@@ -6,7 +6,7 @@ float4 main(PixelInput input) : SV_TARGET
 {
   float4 color;
   color.rgba = 1.0;
-  color.rg = 0.0;
+  color.b = 0.0;
 
 	return color;
 }
