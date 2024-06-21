@@ -70,10 +70,7 @@ void watch_shaders_start(std::vector<char const*> files) {
     epoll_event received_event;
     constexpr int timeout = -1;
     while (!is_finished) {
-      wi::backlog::post("calling epoll_wait");
       int num_events = epoll_wait(epoll_fd, &received_event, 1, timeout);
-      wi::backlog::post(std::string("epoll_wait num_events:") +
-                        std::to_string(num_events));
       if (num_events == -1) break;
       if (num_events > 0 && (received_event.events & EPOLLIN)) {
         read(inotify_fd, buffer.data(), buffer.size());
@@ -89,7 +86,6 @@ void watch_shaders_start(std::vector<char const*> files) {
         break;
       }
     }
-    wi::backlog::post("shader watcher finishing");
 
     cleanup();
 
