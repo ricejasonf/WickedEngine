@@ -12,11 +12,12 @@ namespace my {
 
 class RenderPath : public wi::RenderPath3D {
 public:
-  wi::ecs::Entity box = {};
+  unsigned current_entity = 0;
+  std::array<wi::ecs::Entity, 2> entities;
   int my_shader_index = -1;
   void Load() override;
   void Update(float dt) override;
-  void SetBoxShader();
+  void SetBoxShader(wi::ecs::Entity);
 };
 
 class Application : public wi::Application {

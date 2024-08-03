@@ -65,6 +65,7 @@ int sdl_loop(my::Application& application) {
       default:
         break;
       }
+      wi::input::sdlinput::ProcessEvent(event);
     }
   }
 

@@ -122,56 +122,65 @@ float4 big_lighting(PixelInput input, float4 color_, float3 normal)
   return color;
 }
 
+
 [earlydepthstencil]
 float4 main(PixelInput input) : SV_TARGET
 {
   float time = GetFrame().time;
 	float4 uvsets = input.GetUVSets();
 	float2 uv = uvsets.xy;
+  float grid_factor = 5;
+  float2 gv = frac(uv * grid_factor) - .5;
+  float2 id = floor(uv * grid_factor);
+  float n = my_hash(id);
 
   float4 color = 0;
+  float width = .20;
+
+  // random flipping
+  if (n < 0.5)
+    gv.x *= -1;
 
   float thresh = 0.01;
-  float x = uv.x;
-  float y = uv.y;
-  float z = 1;
+  float mask = smoothstep(thresh, -thresh,
+                          abs(abs(gv.x + gv.y) - .5) - width);
+  float mask_2 = smoothstep(thresh, -thresh,
+                          abs(abs(gv.x + gv.y) - .5) - width * 1.5);
+  // If mask_2 - mask_1 >= 0.01
+  // then angle = dir_mask * pi/4
+  float dir_mask = smoothstep(thresh, -thresh, (abs(gv.x + gv.y) - .1) - width);
+  //dir_mask *= fmod(id, 2.0);
+  color += mask;
+  //color.g += mask;
+  //color.r += mask_2;
+  //color.b += dir_mask;
+  color.a = 1.0;
 
-  // Golden ratio
-  float golden_phi = 1.618033;
-  float N = 5.0;
-  float2 a;
-  a.x = uv.y * N + uv.x;
-  a.y = uv.y * N - uv.x;
-  float N_rcp = 1 / N / 2;
-  a = smoothstep(thresh, -thresh, abs(fmod(a, N_rcp)) - .01);
-  float mask = smoothstep(0, 1.0 + thresh, abs(a.x + a.y));
-  #if 0
-  float target_theta = fmod(n, golden_phi);
-  float target_phi = asin(2 * n / (2 * N + 1));
-  float2 target = float2(target_theta, target_phi);
-  float phi = acos(z);
-  float theta = tan(y / x);
-  float2 current = float2(phi, theta);
-  float mask = smoothstep(0, thresh, distance(current, target));
+  float3 normal = input.nor;
+
+  if (mask_2 - mask > thresh)
+    color.r += dir_mask;
+  float rads = .707107; // TODO determine by flipping
+  // Rotate tan line around nor.
+	input.tan.xyz = input.tan + input.nor * cos(rads) + input.nor * sin(rads);
+  // Rotate tan/nor around cross product (binormal)
+  float3 binor = cross(input.nor, input.tan.xyz);
+  input.nor = input.nor + binor * cos(rads) + binor * sin(rads);
+  input.tan.xyz = input.tan.xyz + binor * cos(rads) + binor * sin(rads);
+
+#if 0
+  // Rotate the normal
+  float angle = 
+  float3x3 r_x = float3x3(1, 0, 0,
+                          cos(angle), 0,  -sin(angle),
+                          sin(angle), 0,  cos(angle));
+  float3 normal = mul(r_x, input.nor);
   #endif
-  color.rg += a;
-  color.b += mask;
 
-  /*
-      for i in range(samples):
-        y = 1 - (i / float(samples - 1)) * 2  # y goes from 1 to -1
-        radius = math.sqrt(1 - y * y)  # radius at y
-
-        theta = phi * i  # golden angle increment
-
-        x = math.cos(theta) * radius
-        z = math.sin(theta) * radius
-
-        points.append((x, y, z))
-  */
-
-  //color = big_lighting(input, color, input.nor);
+  color = big_lighting(input, color, normal);
 
 
+  if (gv.x > .48 || gv.y > .48)
+    color = float4(1, 0, 0, 1);
 	return float4(color.rgb, 1.0);
 }

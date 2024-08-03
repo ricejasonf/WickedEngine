@@ -3,6 +3,7 @@
 #include "wiGraphics.h"
 #include "wiRenderer.h"
 #include "wiInitializer.h"
+#include "wiInput.h"
 #include "wiScene.h"
 #include "wiShaderCompiler.h"
 
@@ -220,9 +221,9 @@ void Application::LoadShaders() {
                     std::string(input.shadersourcefilename));
 }
 
-void RenderPath::SetBoxShader() {
+void RenderPath::SetBoxShader(wi::ecs::Entity entity) {
   if (wi::scene::MaterialComponent* material
-        = scene->materials.GetComponent(box)) {
+        = scene->materials.GetComponent(entity)) {
     material->SetCustomShaderID(my_shader_index);
   } else {
     wi::backlog::post("unable to update shader id",
@@ -231,18 +232,28 @@ void RenderPath::SetBoxShader() {
 }
 
 void RenderPath::Load() {
-#if 0
-  PuzzleCube cube(*scene, /*shader_index=*/-1);
-  box = cube.entity;
-#endif
-  box = scene->Entity_CreateCube(std::string{});
+  entities[1] = scene->Entity_CreateCube(std::string{"cube"});
+  entities[0] = scene->Entity_CreateSphere(std::string{"sphere"});
+  //PuzzleCube Puzzle(*scene, /*shader_index=*/-1);
+  //entities[2] = Puzzle.entity;
 
-  // Get outside of the box!
-  if (wi::scene::TransformComponent* transform
-        = scene->transforms.GetComponent(box)) {
-    transform->Translate(XMFLOAT3{0.0f, 0.0f, 5.0f});
+  // Get outside of the entity!
+  for (auto entity : entities) {
+    if (wi::scene::TransformComponent* transform
+          = scene->transforms.GetComponent(entity)) {
+      transform->Translate(XMFLOAT3{0.0f, 0.0f, 3.0f});
+      //if (entity == entities[2])
+        //transform->Scale(XMFLOAT3{0.33f, 0.33f, 0.33f});
+    }
+    if (entity != entities[current_entity]) {
+      if (wi::scene::ObjectComponent* object
+            = scene->objects.GetComponent(entity)) {
+        object->SetRenderable(false);
+      }
+    }
   }
-  SetBoxShader();
+  SetBoxShader(entities[0]);
+  SetBoxShader(entities[1]);
 
   // Make an interesting light.
   scene->Entity_CreateLight(std::string{},
@@ -252,12 +263,52 @@ void RenderPath::Load() {
     100.0f); // range
 }
 
-void RenderPath::Update(float dt) {
-  // Rotate the box!
+static void InputUpdates(float dt, wi::scene::Scene* scene,
+                         wi::ecs::Entity entity) {
   if (wi::scene::TransformComponent* transform
-        = scene->transforms.GetComponent(box)) {
-    transform->RotateRollPitchYaw(XMFLOAT3{1.0f * dt, 0.1f * dt, 0.0f});
+        = scene->transforms.GetComponent(entity)) {
+    float up = 0.0f;
+    float left = 0.0f;
+    float scale_add = 0.0f;
+    if (wi::input::Down(static_cast<wi::input::BUTTON>('N')))
+      scale_add = -1.0f;
+    if (wi::input::Down(static_cast<wi::input::BUTTON>('M')))
+      scale_add = 1.0f;
+    if (wi::input::Down(wi::input::KEYBOARD_BUTTON_UP) ||
+        wi::input::Down(static_cast<wi::input::BUTTON>('K')))
+      up = 1.0f;
+    if (wi::input::Down(wi::input::KEYBOARD_BUTTON_DOWN) ||
+        wi::input::Down(static_cast<wi::input::BUTTON>('J')))
+      up = -1.0f;
+    if (wi::input::Down(wi::input::KEYBOARD_BUTTON_LEFT) ||
+        wi::input::Down(static_cast<wi::input::BUTTON>('H')))
+      left = 1.0f;
+    if (wi::input::Down(wi::input::KEYBOARD_BUTTON_RIGHT) ||
+        wi::input::Down(static_cast<wi::input::BUTTON>('L')))
+      left = -1.0f;
+
+    scale_add *= dt;
+    transform->RotateRollPitchYaw(XMFLOAT3{up * dt, left * dt, 0.0f});
+    float scale = 1.0f + scale_add;
+    transform->Scale(XMFLOAT3{scale, scale, scale});
   }
+}
+void RenderPath::Update(float dt) {
+  if (wi::input::Press(wi::input::KEYBOARD_BUTTON_SPACE)) {
+    if (wi::scene::ObjectComponent* object
+          = scene->objects.GetComponent(entities[current_entity])) {
+      object->SetRenderable(false);
+    }
+    ++current_entity;
+    current_entity %= entities.size();
+    if (wi::scene::ObjectComponent* object
+          = scene->objects.GetComponent(entities[current_entity])) {
+      object->SetRenderable(true);
+    }
+  }
+
+  // Rotate the ball/box!
+  InputUpdates(dt, scene, entities[current_entity]);
 
   RenderPath3D::Update(dt);
 }
