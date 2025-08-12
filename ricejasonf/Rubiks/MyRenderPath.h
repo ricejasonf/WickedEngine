@@ -8,8 +8,7 @@ namespace my {
 
 class RenderPath : public wi::RenderPath3D {
 public:
-  unsigned current_entity = 0;
-  std::array<wi::ecs::Entity, 2> entities;
+  unsigned entity = 0;
   int my_shader_index = -1;
   void Load() override;
   void Update(float dt) override;

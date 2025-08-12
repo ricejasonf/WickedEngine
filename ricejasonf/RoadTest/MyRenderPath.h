@@ -18,6 +18,7 @@ class Application : public wi::Application {
   RenderPath render_path;
 public:
   void Run();
+  void Initialize() override;
 };
 
 

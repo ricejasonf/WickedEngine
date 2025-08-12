@@ -232,28 +232,17 @@ void RenderPath::SetBoxShader(wi::ecs::Entity entity) {
 }
 
 void RenderPath::Load() {
-  entities[1] = scene->Entity_CreateCube(std::string{"cube"});
-  entities[0] = scene->Entity_CreateSphere(std::string{"sphere"});
-  //PuzzleCube Puzzle(*scene, /*shader_index=*/-1);
-  //entities[2] = Puzzle.entity;
+  //entity = scene->Entity_CreateCube(std::string{"cube"});
+  PuzzleCube Puzzle(*scene, /*shader_index=*/-1);
 
-  // Get outside of the entity!
-  for (auto entity : entities) {
-    if (wi::scene::TransformComponent* transform
-          = scene->transforms.GetComponent(entity)) {
-      transform->Translate(XMFLOAT3{0.0f, 0.0f, 3.0f});
-      //if (entity == entities[2])
-        //transform->Scale(XMFLOAT3{0.33f, 0.33f, 0.33f});
-    }
-    if (entity != entities[current_entity]) {
-      if (wi::scene::ObjectComponent* object
-            = scene->objects.GetComponent(entity)) {
-        object->SetRenderable(false);
-      }
-    }
+  entity = Puzzle.entity;
+
+  if (wi::scene::TransformComponent* transform
+        = scene->transforms.GetComponent(entity)) {
+    transform->Translate(XMFLOAT3{0.0f, 0.0f, 3.0f});
+    //if (entity == entities[2])
+      //transform->Scale(XMFLOAT3{0.33f, 0.33f, 0.33f});
   }
-  SetBoxShader(entities[0]);
-  SetBoxShader(entities[1]);
 
   // Make an interesting light.
   scene->Entity_CreateLight(std::string{},
@@ -294,21 +283,8 @@ static void InputUpdates(float dt, wi::scene::Scene* scene,
   }
 }
 void RenderPath::Update(float dt) {
-  if (wi::input::Press(wi::input::KEYBOARD_BUTTON_SPACE)) {
-    if (wi::scene::ObjectComponent* object
-          = scene->objects.GetComponent(entities[current_entity])) {
-      object->SetRenderable(false);
-    }
-    ++current_entity;
-    current_entity %= entities.size();
-    if (wi::scene::ObjectComponent* object
-          = scene->objects.GetComponent(entities[current_entity])) {
-      object->SetRenderable(true);
-    }
-  }
-
   // Rotate the ball/box!
-  InputUpdates(dt, scene, entities[current_entity]);
+  InputUpdates(dt, scene, entity);
 
   RenderPath3D::Update(dt);
 }

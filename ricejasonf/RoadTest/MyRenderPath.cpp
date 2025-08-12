@@ -13,9 +13,6 @@ class RoadTest {
   using Entity = wi::ecs::Entity;
   using Scene = wi::scene::Scene;
 
-  static constexpr float scale_out = 2.1f;
-  static constexpr float sticker_thickness = 0.025f;
-
   Scene& scene;
   Entity FirstStreet = wi::ecs::INVALID_ENTITY;
 
@@ -25,27 +22,40 @@ public:
   { }
 
   void LoadRoad() {
-    constexpr float Pi = 3.14159265359;
     FirstStreet = scene.Entity_CreateCube("");
-#if 0
     wi::scene::SplineComponent& SC = scene.splines.Create(FirstStreet);
-    SC.SetLooped();
-    for (float theta = 0.0; theta < 2.0 * Pi; theta += Pi / 4.0)
+    //SC.SetLooped();
+    SC.mesh_generation_subdivision = 32;
+    constexpr float Pi = 3.14159265359;
+    float theta = 0.0;
+    constexpr int NumNodes = 8;
+    for (int i = 0; i < NumNodes; i++) {
       LoadRoadNode(FirstStreet, SC, std::cos(theta), std::sin(theta));
-#endif
+      theta += 2.0 * Pi / NumNodes;
+      wilog("theta: %f", theta);
+    }
 
-    wi::scene::TransformComponent& TC = scene.transforms.Create(FirstStreet);
-    TC.Translate(XMFLOAT3{0.0f, 0.0f, 50.0f});
-    TC.Scale(XMFLOAT3{10.0f, 10.0f, 10.0f});
+    if (wi::scene::TransformComponent* TC
+          = scene.transforms.GetComponent(FirstStreet)) {
+      TC->Translate(XMFLOAT3{0.0f, 0.0f, 10.0f});
+      //TC.Scale(XMFLOAT3{10.0f, 10.0f, 10.0f});
+    }
+
+    // Make an interesting light.
+    scene.Entity_CreateLight(std::string{},
+      XMFLOAT3{15.0f, 5.0f, 0.0f}, // pos
+      XMFLOAT3{1.0f, 1.0f, 1.0f}, // color
+      1000.0f, // intensity
+      100.0f); // range
+    wilog("LoadRoad complete");
   }
 
-  void LoadRoadNode(Entity Street,
-                    wi::scene::SplineComponent& SC,
+  void LoadRoadNode(Entity Street, wi::scene::SplineComponent& SC,
                     float x, float y) {
     Entity Node = wi::ecs::CreateEntity();
     wi::scene::TransformComponent& TC = scene.transforms.Create(Node);
     TC.Translate(XMVectorSet(x, y, 0, 0));
-    TC.UpdateTransform();
+    //TC.UpdateTransform();
     SC.spline_node_entities.push_back(Node);
     SC.spline_node_transforms.push_back(TC);
     scene.Component_Attach(Node, Street);
@@ -58,6 +68,12 @@ namespace my {
 
 void Application::Run() {
   wi::Application::Run();
+}
+
+void Application::Initialize() {
+  render_path.Load();
+  ActivatePath(&render_path);
+  wi::Application::Initialize();
 }
 
 void RenderPath::Load() {
