@@ -149,3 +149,7 @@ endif()
 if (WICKED_WINDOWS_TEMPLATE)
     add_subdirectory(Samples/Template_Windows)
 endif()
+
+add_subdirectory(ricejasonf/Rubiks)
+add_subdirectory(ricejasonf/Riemann)
+add_subdirectory(ricejasonf/RoadTest)
